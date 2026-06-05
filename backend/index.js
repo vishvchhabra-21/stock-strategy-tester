@@ -13,7 +13,11 @@ const app = express();
 const PORT = process.env.PORT || 5002;
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || '';
 
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: false,
+  frameguard: false,
+  crossOriginEmbedderPolicy: false
+}));
 app.use(cors({
   origin(origin, callback) {
     const configuredOrigins = CLIENT_ORIGIN
