@@ -1,10 +1,10 @@
 import { memo, useCallback, useState } from 'react';
-import { AlertTriangle, RefreshCcw, ScanSearch, TrendingDown, TrendingUp } from 'lucide-react';
+import { AlertTriangle, RefreshCcw, TrendingDown, TrendingUp } from 'lucide-react';
 import { scanIntradayStocks } from '../services/api.js';
 
 const ACTION_STYLES = {
-  BUY: 'border-green-200 bg-green-50 text-green-800',
-  SELL: 'border-red-200 bg-red-50 text-red-800'
+  BUY: 'border-up/40 bg-up/10 text-up',
+  SELL: 'border-down/40 bg-down/10 text-down'
 };
 
 function IntradayScannerPage() {
@@ -35,36 +35,34 @@ function IntradayScannerPage() {
   }, [exchange, loading, resultLimit, scanLimit]);
 
   return (
-    <div className="flex flex-col gap-5">
-      <section className="panel rounded-lg p-3 sm:p-5">
+    <div className="flex flex-col gap-4 sm:gap-5">
+      <section className="panel p-4 sm:p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <ScanSearch className="h-5 w-5 text-cobalt" aria-hidden="true" />
-              <h2 className="text-base font-semibold text-ink">NSE/BSE Intraday Scanner</h2>
-            </div>
-            <p className="mt-2 text-sm leading-6 text-stone-600">
-              Scans stocks and shows simple BUY or SELL ideas for tomorrow or for the live market.
+            <span className="tag">SCAN · NSE/BSE intraday scanner</span>
+            <p className="mt-2 text-sm leading-6 text-dim">
+              Sweeps the market for BUY or SELL setups — a watchlist for tomorrow when the
+              market is closed, live candidates when it is open.
             </p>
           </div>
           <button
             type="button"
             onClick={runScan}
             disabled={loading}
-            className="glow-button inline-flex min-h-11 items-center justify-center gap-2 rounded-md px-5 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-60"
+            className="btn-amber min-h-11 px-5 text-sm"
           >
             <RefreshCcw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
-            {loading ? 'Scanning' : 'Run Scanner'}
+            {loading ? 'Scanning…' : 'Scan the market'}
           </button>
         </div>
 
         <div className="mt-4 grid gap-4 md:grid-cols-3">
           <label>
-            <span className="mb-1 block text-sm font-medium text-stone-700">Exchange</span>
+            <span className="mb-1 block font-mono text-[11px] font-semibold uppercase tracking-widest text-faint">Exchange</span>
             <select
               value={exchange}
               onChange={(event) => setExchange(event.target.value)}
-              className="min-h-11 w-full rounded-md border border-line bg-white px-3 text-sm text-ink"
+              className="min-h-11 w-full px-3 text-sm"
             >
               <option value="ALL">NSE + BSE</option>
               <option value="NSE">NSE only</option>
@@ -73,11 +71,11 @@ function IntradayScannerPage() {
           </label>
 
           <label>
-            <span className="mb-1 block text-sm font-medium text-stone-700">Scan depth</span>
+            <span className="mb-1 block font-mono text-[11px] font-semibold uppercase tracking-widest text-faint">Scan depth</span>
             <select
               value={scanLimit}
               onChange={(event) => setScanLimit(Number(event.target.value))}
-              className="min-h-11 w-full rounded-md border border-line bg-white px-3 text-sm text-ink"
+              className="min-h-11 w-full px-3 text-sm"
             >
               <option value={80}>Fast 80</option>
               <option value={150}>Deeper 150</option>
@@ -87,11 +85,11 @@ function IntradayScannerPage() {
           </label>
 
           <label>
-            <span className="mb-1 block text-sm font-medium text-stone-700">Show results</span>
+            <span className="mb-1 block font-mono text-[11px] font-semibold uppercase tracking-widest text-faint">Show results</span>
             <select
               value={resultLimit}
               onChange={(event) => setResultLimit(Number(event.target.value))}
-              className="min-h-11 w-full rounded-md border border-line bg-white px-3 text-sm text-ink"
+              className="min-h-11 w-full px-3 text-sm"
             >
               <option value={10}>Top 10</option>
               <option value={20}>Top 20</option>
@@ -102,15 +100,15 @@ function IntradayScannerPage() {
       </section>
 
       {error && (
-        <div className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
-          <span>{error}</span>
+        <div className="flex items-start gap-3 rounded-lg border border-down/35 bg-down/10 px-4 py-3 text-sm">
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-down" aria-hidden="true" />
+          <span className="text-dim">{error}</span>
         </div>
       )}
 
       {result && (
         <>
-          <section className="panel rounded-lg p-3 sm:p-5">
+          <section className="panel p-4 sm:p-5">
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
               <Metric label="Mode" value={result.label} />
               <Metric label="Market time" value={result.marketTimeIst} />
@@ -120,10 +118,10 @@ function IntradayScannerPage() {
             </div>
           </section>
 
-          <section className="panel rounded-lg p-3 sm:p-5">
+          <section className="panel p-4 sm:p-5">
             <div className="mb-4 flex items-center justify-between gap-3">
-              <h3 className="text-base font-semibold text-ink">{result.label}</h3>
-              <span className="text-xs font-semibold uppercase text-stone-500">{result.generatedFor}</span>
+              <span className="tag">SCAN · {result.label}</span>
+              <span className="font-mono text-xs uppercase tracking-wider text-faint">{result.generatedFor}</span>
             </div>
 
             <div className="grid gap-3 lg:grid-cols-2">
@@ -133,8 +131,8 @@ function IntradayScannerPage() {
             </div>
 
             {(!result.candidates || result.candidates.length === 0) && (
-              <div className="rounded-md border border-amber/30 bg-amber/10 px-4 py-3 text-sm text-stone-700">
-                No high-quality BUY or SELL setups were found in this scan depth.
+              <div className="rounded-md border border-dashed border-line bg-well px-4 py-3 text-sm text-dim">
+                No high-quality BUY or SELL setups were found at this scan depth. Try a deeper scan.
               </div>
             )}
           </section>
@@ -149,18 +147,18 @@ function CandidateCard({ candidate }) {
   const Icon = isBuy ? TrendingUp : TrendingDown;
 
   return (
-    <article className="rounded-lg border border-line bg-white/75 p-3 shadow-panel">
+    <article className="rounded-md border border-line bg-well p-3 transition hover:border-amber/50">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="mobile-safe-text text-base font-bold text-ink">{candidate.symbol}</span>
-            <span className="rounded-sm border border-line bg-paper px-1.5 py-0.5 text-[11px] font-semibold text-stone-500">
+            <span className="mobile-safe-text font-mono text-base font-bold text-ink">{candidate.symbol}</span>
+            <span className="rounded border border-line bg-panel px-1.5 py-0.5 font-mono text-[10px] font-semibold text-faint">
               {candidate.exchange}
             </span>
           </div>
-          <p className="mobile-safe-text mt-1 text-xs text-stone-500">{candidate.name}</p>
+          <p className="mobile-safe-text mt-1 text-xs text-faint">{candidate.name}</p>
         </div>
-        <span className={`inline-flex shrink-0 items-center gap-1 rounded-md border px-2 py-1 text-xs font-bold ${ACTION_STYLES[candidate.action]}`}>
+        <span className={`inline-flex shrink-0 items-center gap-1 rounded border px-2 py-1 font-mono text-xs font-bold ${ACTION_STYLES[candidate.action]}`}>
           <Icon className="h-3.5 w-3.5" aria-hidden="true" />
           {candidate.action}
         </span>
@@ -175,13 +173,13 @@ function CandidateCard({ candidate }) {
         <Metric label="R:R" value={candidate.riskReward || '-'} compact />
       </div>
 
-      <div className="mt-3 grid grid-cols-3 gap-2 text-xs font-semibold text-stone-500">
-            <span>Strength {candidate.confidence}%</span>
+      <div className="num mt-3 grid grid-cols-3 gap-2 text-xs font-semibold text-faint">
+        <span>Strength {candidate.confidence}%</span>
         <span>Score {candidate.score}</span>
         <span>Close {formatPrice(candidate.latestClose)}</span>
       </div>
       {candidate.aiAnalysis && (
-        <div className="mt-3 grid grid-cols-4 gap-2 text-xs font-semibold text-stone-500">
+        <div className="num mt-2 grid grid-cols-4 gap-2 text-xs font-semibold text-faint">
           <span>Chart {candidate.technicalScore}</span>
           <span>Company {candidate.fundamentalScore}</span>
           <span>Model {candidate.mlScore}</span>
@@ -189,19 +187,19 @@ function CandidateCard({ candidate }) {
         </div>
       )}
 
-      <p className="mobile-safe-text mt-3 text-sm leading-6 text-stone-700">{candidate.reason}</p>
+      <p className="mobile-safe-text mt-3 text-sm leading-6 text-dim">{candidate.reason}</p>
       {candidate.note && (
-        <p className="mobile-safe-text mt-2 text-xs font-semibold text-stone-500">{candidate.note}</p>
+        <p className="mobile-safe-text mt-2 text-xs leading-5 text-faint">{candidate.note}</p>
       )}
     </article>
   );
 }
 
-function Metric({ label, value, compact = false }) {
+function Metric({ label, value }) {
   return (
-    <div className={`rounded-md border border-line bg-white/70 px-3 py-2 ${compact ? '' : 'shadow-sm'}`}>
-      <div className="text-[11px] font-bold uppercase text-stone-500">{label}</div>
-      <div className="mobile-safe-text mt-1 text-sm font-bold text-ink">{value}</div>
+    <div className="rounded-md border border-line bg-panel px-3 py-2">
+      <div className="font-mono text-[10px] font-bold uppercase tracking-widest text-faint">{label}</div>
+      <div className="num mobile-safe-text mt-1 text-sm font-bold text-ink">{value}</div>
     </div>
   );
 }

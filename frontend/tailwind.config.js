@@ -4,19 +4,22 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Inter', 'ui-sans-serif', 'system-ui', 'Segoe UI', 'Arial', 'sans-serif']
+        sans: ['IBM Plex Sans', 'ui-sans-serif', 'system-ui', 'Segoe UI', 'Arial', 'sans-serif'],
+        display: ['Barlow Condensed', 'IBM Plex Sans', 'sans-serif'],
+        mono: ['IBM Plex Mono', 'ui-monospace', 'SFMono-Regular', 'Consolas', 'monospace']
       },
       colors: {
-        ink: '#18211f',
-        paper: '#f8faf7',
-        line: '#d8ded8',
-        mint: '#0f8f63',
-        coral: '#d84a3a',
-        amber: '#d99b1f',
-        cobalt: '#2563eb'
-      },
-      boxShadow: {
-        panel: '0 14px 35px rgba(24, 33, 31, 0.08)'
+        void: '#0A0E16',
+        panel: '#101624',
+        well: '#0C111D',
+        line: '#222B3D',
+        ink: '#E9EDF6',
+        dim: '#9AA4BA',
+        faint: '#5F6A85',
+        amber: '#FFB52E',
+        up: '#2FD584',
+        down: '#FF5C5C',
+        info: '#6AA6FF'
       }
     }
   },

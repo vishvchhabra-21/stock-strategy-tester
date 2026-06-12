@@ -15,6 +15,12 @@ const PRICE_VOLUME_GAP = 22;
 const MIN_VISIBLE_CANDLES = 25;
 const DEFAULT_VISIBLE_CANDLES = 100;
 
+const CHART_BG = '#0C111D';
+const GRID = '#1B2434';
+const AXIS_TEXT = '#5F6A85';
+const UP = '#2FD584';
+const DOWN = '#FF5C5C';
+
 function CandlestickChart({ data }) {
   const [visibleCount, setVisibleCount] = useState(DEFAULT_VISIBLE_CANDLES);
   const [startIndex, setStartIndex] = useState(null);
@@ -34,10 +40,10 @@ function CandlestickChart({ data }) {
 
   if (!visible.length) {
     return (
-      <section className="panel rounded-lg p-3 sm:p-5">
-        <h2 className="text-base font-semibold text-ink">Price Chart</h2>
-        <div className="mt-4 grid min-h-72 place-items-center rounded-md border border-dashed border-line bg-paper text-sm text-stone-500">
-          No chart data available
+      <section className="panel p-4 sm:p-5">
+        <span className="tag">BT · Price chart</span>
+        <div className="mt-4 grid min-h-72 place-items-center rounded-md border border-dashed border-line bg-well font-mono text-sm text-faint">
+          Run a backtest to draw the chart
         </div>
       </section>
     );
@@ -102,28 +108,28 @@ function CandlestickChart({ data }) {
   }
 
   return (
-    <section className="panel rounded-lg p-3 sm:p-5">
+    <section className="panel p-4 sm:p-5">
       <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <h2 className="text-base font-semibold text-ink">Candlestick Box Chart</h2>
-          <p className="mt-1 text-xs font-medium text-stone-500">
+          <span className="tag">BT · Price chart</span>
+          <p className="num mt-2 text-xs text-faint">
             Showing {visible.length} of {chartData.length} candles
           </p>
         </div>
-        <div className="flex flex-wrap gap-3 text-xs font-medium text-stone-600">
+        <div className="flex flex-wrap gap-3 font-mono text-xs text-dim">
           {indicators.boxes && (
             <>
-              <Legend color="#d84a3a" label="Box high" />
-              <Legend color="#0f8f63" label="Box low" />
-              <Legend color="#d99b1f" label="Mid" />
+              <Legend color={DOWN} label="Box high" />
+              <Legend color={UP} label="Box low" />
+              <Legend color="#8FA0BF" label="Mid" />
             </>
           )}
-          {indicators.sma20 && <Legend color="#7c3aed" label="SMA 20" />}
-          {indicators.sma50 && <Legend color="#0891b2" label="SMA 50" />}
+          {indicators.sma20 && <Legend color="#FFB52E" label="SMA 20" />}
+          {indicators.sma50 && <Legend color="#6AA6FF" label="SMA 50" />}
         </div>
       </div>
 
-      <div className="mb-4 flex flex-col gap-3 rounded-md border border-line bg-white p-3 lg:flex-row lg:items-center lg:justify-between">
+      <div className="mb-4 flex flex-col gap-3 rounded-md border border-line bg-well p-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-wrap gap-2">
           <IconButton label="Zoom in" onClick={() => changeZoom(-20)} disabled={visibleCount <= MIN_VISIBLE_CANDLES}>
             <ZoomIn className="h-4 w-4" aria-hidden="true" />
@@ -137,7 +143,7 @@ function CandlestickChart({ data }) {
         </div>
 
         <div className="flex min-w-0 flex-1 items-center gap-3 lg:max-w-sm">
-          <span className="text-xs font-semibold text-stone-500">Pan</span>
+          <span className="font-mono text-[11px] font-semibold uppercase tracking-widest text-faint">Pan</span>
           <input
             type="range"
             min="0"
@@ -145,7 +151,7 @@ function CandlestickChart({ data }) {
             value={resolvedStart}
             onChange={(event) => setStartIndex(Number(event.target.value))}
             disabled={maxStart === 0}
-            className="w-full accent-cobalt disabled:opacity-50"
+            className="w-full disabled:opacity-50"
           />
         </div>
 
@@ -157,9 +163,9 @@ function CandlestickChart({ data }) {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-md border border-line bg-white">
+      <div className="overflow-hidden rounded-md border border-line">
         <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} role="img" aria-label="Candlestick chart with previous day box lines" className="h-auto w-full">
-          <rect x="0" y="0" width={WIDTH} height={HEIGHT} fill="#ffffff" />
+          <rect x="0" y="0" width={WIDTH} height={HEIGHT} fill={CHART_BG} />
 
           {gridTicks.map((tick) => (
             <g key={tick.value}>
@@ -168,10 +174,10 @@ function CandlestickChart({ data }) {
                 x2={WIDTH - PADDING.right}
                 y1={tick.y}
                 y2={tick.y}
-                stroke="#e7ebe7"
+                stroke={GRID}
                 strokeWidth="1"
               />
-              <text x={WIDTH - PADDING.right + 10} y={tick.y + 4} fill="#6b7280" fontSize="12">
+              <text x={WIDTH - PADDING.right + 10} y={tick.y + 4} fill={AXIS_TEXT} fontSize="12" fontFamily="IBM Plex Mono, monospace">
                 {formatPrice(tick.value)}
               </text>
             </g>
@@ -184,10 +190,10 @@ function CandlestickChart({ data }) {
                 x2={WIDTH - PADDING.right}
                 y1={volumeTop + VOLUME_HEIGHT}
                 y2={volumeTop + VOLUME_HEIGHT}
-                stroke="#d8ded8"
+                stroke={GRID}
                 strokeWidth="1"
               />
-              <text x={WIDTH - PADDING.right + 10} y={volumeTop + 12} fill="#6b7280" fontSize="12">
+              <text x={WIDTH - PADDING.right + 10} y={volumeTop + 12} fill={AXIS_TEXT} fontSize="12" fontFamily="IBM Plex Mono, monospace">
                 Vol
               </text>
               {visible.map((day, index) => {
@@ -201,7 +207,7 @@ function CandlestickChart({ data }) {
                     width={volumeWidth}
                     height={Math.max(1, volumeTop + VOLUME_HEIGHT - barTop)}
                     rx="1"
-                    fill={isUp ? 'rgba(15, 143, 99, 0.32)' : 'rgba(216, 74, 58, 0.32)'}
+                    fill={isUp ? 'rgba(47, 213, 132, 0.28)' : 'rgba(255, 92, 92, 0.28)'}
                   >
                     <title>{`${day.date}: ${formatCompact(day.volume)} volume`}</title>
                   </rect>
@@ -212,21 +218,21 @@ function CandlestickChart({ data }) {
 
           {indicators.boxes && (
             <>
-              <PathLine data={visible} field="boxHigh" x={x} y={y} color="#d84a3a" width="1.6" dash="5 5" />
-              <PathLine data={visible} field="boxLow" x={x} y={y} color="#0f8f63" width="1.6" dash="5 5" />
-              <PathLine data={visible} field="boxMid" x={x} y={y} color="#d99b1f" width="1.4" dash="2 6" />
+              <PathLine data={visible} field="boxHigh" x={x} y={y} color={DOWN} width="1.4" dash="5 5" opacity="0.75" />
+              <PathLine data={visible} field="boxLow" x={x} y={y} color={UP} width="1.4" dash="5 5" opacity="0.75" />
+              <PathLine data={visible} field="boxMid" x={x} y={y} color="#8FA0BF" width="1.2" dash="2 6" opacity="0.7" />
             </>
           )}
           {indicators.sma20 && (
-            <PathLine data={visible} field="sma20" x={x} y={y} color="#7c3aed" width="2.2" />
+            <PathLine data={visible} field="sma20" x={x} y={y} color="#FFB52E" width="2" />
           )}
           {indicators.sma50 && (
-            <PathLine data={visible} field="sma50" x={x} y={y} color="#0891b2" width="2.2" />
+            <PathLine data={visible} field="sma50" x={x} y={y} color="#6AA6FF" width="2" />
           )}
 
           {visible.map((day, index) => {
             const isUp = day.close >= day.open;
-            const color = isUp ? '#0f8f63' : '#d84a3a';
+            const color = isUp ? UP : DOWN;
             const bodyTop = y(Math.max(day.open, day.close));
             const bodyBottom = y(Math.min(day.open, day.close));
             const bodyHeight = Math.max(2, bodyBottom - bodyTop);
@@ -240,7 +246,7 @@ function CandlestickChart({ data }) {
                   y1={y(day.high)}
                   y2={y(day.low)}
                   stroke={color}
-                  strokeWidth="1.5"
+                  strokeWidth="1.4"
                 />
                 <rect
                   x={centerX - candleWidth / 2}
@@ -248,10 +254,10 @@ function CandlestickChart({ data }) {
                   width={candleWidth}
                   height={bodyHeight}
                   rx="1"
-                  fill={isUp ? '#dff5ea' : '#fde5e0'}
-                  stroke={color}
-                  strokeWidth="1.4"
-                />
+                  fill={color}
+                >
+                  <title>{`${day.date}  O ${formatPrice(day.open)}  H ${formatPrice(day.high)}  L ${formatPrice(day.low)}  C ${formatPrice(day.close)}`}</title>
+                </rect>
                 {day.signalType && (
                   <SignalMarker
                     x={centerX}
@@ -267,7 +273,7 @@ function CandlestickChart({ data }) {
           {visible.filter((_, index) => index % Math.ceil(visible.length / 6) === 0).map((day) => {
             const index = visible.findIndex((item) => item.date === day.date);
             return (
-              <text key={day.date} x={x(index)} y={HEIGHT - 16} textAnchor="middle" fill="#6b7280" fontSize="12">
+              <text key={day.date} x={x(index)} y={HEIGHT - 16} textAnchor="middle" fill={AXIS_TEXT} fontSize="12" fontFamily="IBM Plex Mono, monospace">
                 {shortDate(day.date)}
               </text>
             );
@@ -310,7 +316,7 @@ function IconButton({ label, onClick, disabled, children }) {
       aria-label={label}
       onClick={onClick}
       disabled={disabled}
-      className="grid h-9 w-9 place-items-center rounded-md border border-line bg-paper text-stone-700 transition hover:border-cobalt hover:text-cobalt disabled:cursor-not-allowed disabled:opacity-40"
+      className="btn-ghost h-9 w-9"
     >
       {children}
     </button>
@@ -319,19 +325,21 @@ function IconButton({ label, onClick, disabled, children }) {
 
 function IndicatorToggle({ label, checked, onChange }) {
   return (
-    <label className="inline-flex min-h-9 items-center gap-2 rounded-md border border-line bg-paper px-3 text-xs font-semibold text-stone-700">
+    <label className={`inline-flex min-h-9 cursor-pointer items-center gap-2 rounded-md border px-3 font-mono text-xs font-semibold transition ${
+      checked ? 'border-amber/50 text-ink' : 'border-line text-faint hover:text-dim'
+    }`}>
       <input
         type="checkbox"
         checked={checked}
         onChange={onChange}
-        className="h-4 w-4 accent-cobalt"
+        className="h-3.5 w-3.5"
       />
       {label}
     </label>
   );
 }
 
-function PathLine({ data, field, x, y, color, width, dash }) {
+function PathLine({ data, field, x, y, color, width, dash, opacity = '1' }) {
   const points = data
     .map((day, index) => Number.isFinite(day[field]) ? `${x(index)},${y(day[field])}` : null)
     .filter(Boolean)
@@ -348,6 +356,7 @@ function PathLine({ data, field, x, y, color, width, dash }) {
       stroke={color}
       strokeWidth={width}
       strokeDasharray={dash}
+      strokeOpacity={opacity}
       strokeLinecap="round"
       strokeLinejoin="round"
     />
@@ -363,7 +372,7 @@ function SignalMarker({ x, y, type, label }) {
   return (
     <g>
       <title>{label}</title>
-      <polygon points={points} fill={color} stroke="#ffffff" strokeWidth="1.5" />
+      <polygon points={points} fill={color} stroke={CHART_BG} strokeWidth="1.5" />
     </g>
   );
 }
@@ -371,7 +380,7 @@ function SignalMarker({ x, y, type, label }) {
 function Legend({ color, label }) {
   return (
     <span className="inline-flex items-center gap-1.5">
-      <span className="h-2.5 w-5 rounded-sm" style={{ backgroundColor: color }} />
+      <span className="h-2 w-5 rounded-sm" style={{ backgroundColor: color }} />
       {label}
     </span>
   );

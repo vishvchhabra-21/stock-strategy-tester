@@ -1,16 +1,16 @@
 const BADGE_STYLES = {
-  BULLISH_REVERSAL: 'bg-green-100 text-green-800 border-green-200',
-  BEARISH_REVERSAL: 'bg-red-100 text-red-800 border-red-200',
-  NEUTRAL: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-  POSSIBLE_TREND_CHANGE: 'bg-blue-100 text-blue-800 border-blue-200',
-  NO_CLEAR_SIGNAL: 'bg-stone-100 text-stone-700 border-stone-200'
+  BULLISH_REVERSAL: 'border-up/40 bg-up/10 text-up',
+  BEARISH_REVERSAL: 'border-down/40 bg-down/10 text-down',
+  NEUTRAL: 'border-line bg-well text-dim',
+  POSSIBLE_TREND_CHANGE: 'border-info/40 bg-info/10 text-info',
+  NO_CLEAR_SIGNAL: 'border-line bg-well text-faint'
 };
 
 export default function SignalBadge({ type, label }) {
   return (
     <span
       data-signal-type={type || 'NO_CLEAR_SIGNAL'}
-      className={`signal-badge inline-flex min-h-7 items-center rounded-md border px-2.5 py-1 text-xs font-semibold ${BADGE_STYLES[type] || BADGE_STYLES.NO_CLEAR_SIGNAL}`}
+      className={`inline-flex min-h-6 items-center rounded border px-2 py-0.5 font-mono text-[11px] font-semibold uppercase tracking-wide ${BADGE_STYLES[type] || BADGE_STYLES.NO_CLEAR_SIGNAL}`}
     >
       {label || 'No Clear Signal'}
     </span>

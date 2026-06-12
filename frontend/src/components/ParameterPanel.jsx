@@ -1,4 +1,4 @@
-import { Play, Search, SlidersHorizontal } from 'lucide-react';
+import { Play, Search } from 'lucide-react';
 import { memo } from 'react';
 
 const SAMPLE_STOCKS = ['RELIANCE.NS', 'TCS.NS', 'INFY.NS', 'HDFCBANK.NS', 'ICICIBANK.NS'];
@@ -20,11 +20,10 @@ function ParameterPanel({
     : 'Most traded last week';
 
   return (
-    <form onSubmit={onSubmit} className="panel rounded-lg p-3 sm:p-4">
+    <form onSubmit={onSubmit} className="panel p-4 sm:p-5">
       <div className="mb-4 flex items-center gap-2">
-        <SlidersHorizontal className="h-5 w-5 text-cobalt" aria-hidden="true" />
-        <h2 className="text-base font-semibold text-ink">Strategy Back Tester</h2>
-        <InfoButton text="Choose a stock, tune the strategy settings, and backtest how the method worked in the past." />
+        <span className="tag">BT · Backtest setup</span>
+        <InfoButton text="Choose a stock, tune the strategy settings, and test how the method worked on past data." />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[minmax(260px,1.4fr)_repeat(3,minmax(140px,0.75fr))_minmax(130px,0.55fr)_auto] lg:items-end">
@@ -39,15 +38,15 @@ function ParameterPanel({
               id="stock-symbol"
               value={form.symbol}
               onChange={(event) => onFormChange('symbol', event.target.value.toUpperCase())}
-              placeholder="Select a stock to backtest"
-              className="min-h-11 w-full rounded-md border border-line bg-white px-3 text-sm text-ink"
+              placeholder="RELIANCE.NS"
+              className="num min-h-11 w-full px-3 text-sm"
             />
             <button
               type="button"
               onClick={onSearch}
               disabled={searching || loading}
               title="Search symbol"
-              className="grid min-h-11 w-11 shrink-0 place-items-center rounded-md border border-line bg-white text-stone-700 transition hover:border-cobalt hover:text-cobalt disabled:cursor-not-allowed disabled:opacity-60"
+              className="btn-ghost min-h-11 w-11 shrink-0"
             >
               <Search className="h-5 w-5" aria-hidden="true" />
             </button>
@@ -61,7 +60,7 @@ function ParameterPanel({
           step="0.01"
           min="0.01"
           max="0.45"
-          suffix="x"
+          suffix="×"
           onChange={(value) => onFormChange('boxTolerance', value)}
         />
         <NumberInput
@@ -71,7 +70,7 @@ function ParameterPanel({
           step="0.1"
           min="0.5"
           max="10"
-          suffix="x"
+          suffix="×"
           onChange={(value) => onFormChange('wickRatio', value)}
         />
         <NumberInput
@@ -81,7 +80,7 @@ function ParameterPanel({
           step="0.1"
           min="0.5"
           max="5"
-          suffix="x"
+          suffix="×"
           onChange={(value) => onFormChange('volumeMultiplier', value)}
         />
         <div className="min-w-0">
@@ -94,7 +93,7 @@ function ParameterPanel({
             id="period"
             value={form.period}
             onChange={(event) => onFormChange('period', event.target.value)}
-            className="min-h-11 w-full rounded-md border border-line bg-white px-3 text-sm text-ink"
+            className="min-h-11 w-full px-3 text-sm"
           >
             <option value="3mo">3 months</option>
             <option value="6mo">6 months</option>
@@ -107,21 +106,21 @@ function ParameterPanel({
           type="submit"
           disabled={loading}
           aria-busy={loading}
-          className="glow-button inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md px-5 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-60 lg:w-auto"
+          className="btn-amber min-h-11 w-full px-5 text-sm lg:w-auto"
         >
           <Play className="h-4 w-4" aria-hidden="true" />
-          {loading ? 'Running' : 'Run Backtest'}
+          {loading ? 'Running…' : 'Run backtest'}
         </button>
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-2">
-        <span className="text-xs font-semibold text-stone-500">Sample Indian stocks:</span>
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <span className="font-mono text-xs text-faint">Try:</span>
         {SAMPLE_STOCKS.map((symbol) => (
           <button
             key={symbol}
             type="button"
             onClick={() => onPickSuggestion(symbol)}
-            className="rounded-md border border-line bg-white/75 px-2.5 py-1 text-xs font-bold text-stone-600 transition hover:border-cobalt hover:text-cobalt"
+            className="rounded border border-line bg-well px-2.5 py-1 font-mono text-xs font-semibold text-dim transition hover:border-amber hover:text-amber"
           >
             {symbol}
           </button>
@@ -129,8 +128,8 @@ function ParameterPanel({
       </div>
 
       {displayedStocks.length > 0 && (
-        <div className="mt-4 max-h-64 overflow-auto rounded-md border border-line bg-white shadow-panel">
-          <div className="sticky top-0 z-10 border-b border-line bg-paper px-3 py-2 text-xs font-semibold text-stone-600">
+        <div className="mt-4 max-h-64 overflow-auto rounded-md border border-line bg-well">
+          <div className="sticky top-0 z-10 border-b border-line bg-panel px-3 py-2 font-mono text-[11px] font-semibold uppercase tracking-widest text-faint">
             {listTitle}
           </div>
           {displayedStocks.map((item) => (
@@ -153,38 +152,38 @@ function StockRow({ item, onPick }) {
     <button
       type="button"
       onClick={onPick}
-      className="row-hover grid w-full gap-2 border-b border-line px-3 py-2.5 text-left text-sm last:border-b-0 hover:bg-paper sm:grid-cols-[1fr_auto]"
+      className="row-hover grid w-full gap-2 border-b border-line px-3 py-2.5 text-left text-sm last:border-b-0 hover:bg-panel sm:grid-cols-[1fr_auto]"
     >
       <span className="min-w-0">
         <span className="flex flex-wrap items-center gap-2">
-          <span className="font-semibold text-ink">{item.symbol}</span>
+          <span className="font-mono font-semibold text-ink">{item.symbol}</span>
           {item.exchange && (
-            <span className="rounded-sm border border-line bg-paper px-1.5 py-0.5 text-[11px] font-semibold text-stone-500">
+            <span className="rounded border border-line bg-panel px-1.5 py-0.5 font-mono text-[10px] font-semibold text-faint">
               {item.exchange}
             </span>
           )}
           {item.source && (
-            <span className="rounded-sm border border-blue-100 bg-blue-50 px-1.5 py-0.5 text-[11px] font-semibold text-cobalt">
+            <span className="rounded border border-line bg-panel px-1.5 py-0.5 font-mono text-[10px] font-semibold text-faint">
               {item.source}
             </span>
           )}
         </span>
-        <span className="mt-1 block truncate text-xs text-stone-500">{item.name}</span>
+        <span className="mt-1 block truncate text-xs text-faint">{item.name}</span>
       </span>
-      <span className="grid grid-cols-3 gap-2 sm:flex sm:items-center sm:gap-3 sm:justify-end">
+      <span className="grid grid-cols-3 gap-2 sm:flex sm:items-center sm:justify-end sm:gap-3">
         {Number.isFinite(item.totalTradedQuantity) && (
           <span className="min-w-0 text-left sm:text-right">
-            <span className="block text-xs font-semibold text-stone-500">Week vol</span>
-            <span className="mobile-safe-text block font-semibold text-ink">{formatCompact(item.totalTradedQuantity)}</span>
+            <span className="block font-mono text-[10px] uppercase tracking-wider text-faint">Week vol</span>
+            <span className="num mobile-safe-text block font-semibold text-dim">{formatCompact(item.totalTradedQuantity)}</span>
           </span>
         )}
         <span className="min-w-0 text-left sm:text-right">
-          <span className="block text-xs font-semibold text-stone-500">Price</span>
-          <span className="mobile-safe-text block font-semibold text-ink">{formatPrice(item.currentPrice, item.currency)}</span>
+          <span className="block font-mono text-[10px] uppercase tracking-wider text-faint">Price</span>
+          <span className="num mobile-safe-text block font-semibold text-ink">{formatPrice(item.currentPrice, item.currency)}</span>
         </span>
         <span className="min-w-0 text-left sm:text-right">
-          <span className="block text-xs font-semibold text-stone-500">1D</span>
-          <span className={`mobile-safe-text block font-semibold ${returnTone(item.oneDayReturn)}`}>
+          <span className="block font-mono text-[10px] uppercase tracking-wider text-faint">1D</span>
+          <span className={`num mobile-safe-text block font-semibold ${returnTone(item.oneDayReturn)}`}>
             {formatReturn(item.oneDayReturn)}
           </span>
         </span>
@@ -199,7 +198,7 @@ function NumberInput({ label, help, value, onChange, step, min, max, suffix }) {
   return (
     <div>
       <FieldLabel htmlFor={id} label={label} help={help} />
-      <div className="flex min-h-11 overflow-hidden rounded-md border border-line bg-white">
+      <div className="flex min-h-11 overflow-hidden rounded-md border border-line bg-well focus-within:border-amber">
         <input
           id={id}
           type="number"
@@ -208,9 +207,9 @@ function NumberInput({ label, help, value, onChange, step, min, max, suffix }) {
           min={min}
           max={max}
           onChange={(event) => onChange(event.target.value)}
-          className="w-full border-0 px-3 text-sm text-ink"
+          className="num w-full rounded-none border-0 bg-transparent px-3 text-sm focus:shadow-none"
         />
-        <span className="grid w-10 place-items-center border-l border-line bg-paper text-xs font-semibold text-stone-500">
+        <span className="grid w-10 shrink-0 place-items-center border-l border-line bg-panel font-mono text-xs font-semibold text-faint">
           {suffix}
         </span>
       </div>
@@ -221,7 +220,7 @@ function NumberInput({ label, help, value, onChange, step, min, max, suffix }) {
 function FieldLabel({ htmlFor, label, help }) {
   return (
     <div className="mb-1 flex items-center gap-1.5">
-      <label htmlFor={htmlFor} className="block text-sm font-medium text-stone-700">
+      <label htmlFor={htmlFor} className="block font-mono text-[11px] font-semibold uppercase tracking-widest text-faint">
         {label}
       </label>
       <InfoButton text={help} />
@@ -235,13 +234,11 @@ function InfoButton({ text }) {
       <button
         type="button"
         aria-label="Show help"
-        className="grid h-5 w-5 place-items-center rounded-full border border-line bg-white text-[11px] font-bold leading-none text-stone-600 transition hover:border-cobalt hover:text-cobalt focus:border-cobalt focus:text-cobalt"
+        className="grid h-[18px] w-[18px] place-items-center rounded-full border border-line bg-well font-mono text-[10px] font-bold leading-none text-faint transition hover:border-amber hover:text-amber focus:border-amber focus:text-amber"
       >
-        !
+        ?
       </button>
-      <span className="pointer-events-none absolute left-1/2 top-7 z-20 w-64 -translate-x-1/2 rounded-md border border-line bg-ink px-3 py-2 text-xs font-medium leading-5 text-white opacity-0 shadow-panel transition group-hover:opacity-100 group-focus-within:opacity-100">
-        {text}
-      </span>
+      <span className="tip-bubble">{text}</span>
     </span>
   );
 }
@@ -267,14 +264,14 @@ function formatReturn(value) {
 
 function returnTone(value) {
   if (value > 0) {
-    return 'text-mint';
+    return 'text-up';
   }
 
   if (value < 0) {
-    return 'text-coral';
+    return 'text-down';
   }
 
-  return 'text-stone-600';
+  return 'text-dim';
 }
 
 function formatCompact(value) {

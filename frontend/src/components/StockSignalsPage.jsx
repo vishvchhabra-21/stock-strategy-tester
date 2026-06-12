@@ -1,12 +1,13 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
-import { Activity, AlertTriangle, Clock3, Plus, RefreshCcw, Search, X, Zap } from 'lucide-react';
+import { AlertTriangle, Clock3, Plus, RefreshCcw, Search, X } from 'lucide-react';
 import { getIntradaySignal, getMostTradedStocks, searchStocks } from '../services/api.js';
+import FlipVerdict from './FlipVerdict.jsx';
 
-const DECISION_STYLES = {
-  BUY: 'decision-buy',
-  SELL: 'decision-sell',
-  HOLD: 'decision-hold',
-  WAIT: 'decision-wait'
+const VERDICT_STYLES = {
+  BUY: 'verdict-buy',
+  SELL: 'verdict-sell',
+  HOLD: 'verdict-wait',
+  WAIT: 'verdict-wait'
 };
 const SAMPLE_STOCKS = ['RELIANCE.NS', 'TCS.NS', 'INFY.NS', 'HDFCBANK.NS', 'ICICIBANK.NS'];
 const STORAGE_KEY = 'intraday-desk-symbols';
@@ -58,32 +59,29 @@ function StockSignalsPage() {
   }, []);
 
   return (
-    <div className="flex flex-col gap-5">
-      <section className="panel rounded-lg p-3 sm:p-5">
+    <div className="flex flex-col gap-4 sm:gap-5">
+      <section className="panel p-4 sm:p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <Activity className="h-5 w-5 text-cobalt" aria-hidden="true" />
-              <h2 className="text-base font-semibold text-ink">Intraday Signal Desk</h2>
-            </div>
-            <p className="mt-2 text-sm leading-6 text-stone-600">
-              Track up to four stocks side by side. Each window holds one stock; use its refresh
-              button to pull the current market state and get a fresh BUY, SELL, or WAIT call.
+            <span className="tag">DESK · Intraday signal desk</span>
+            <p className="mt-2 text-sm leading-6 text-dim">
+              Track up to four stocks side by side. Each window holds one stock; refresh it to
+              pull the current market state and get a fresh BUY, SELL, or WAIT call.
             </p>
           </div>
           <div className="grid shrink-0 grid-cols-2 gap-3">
             <label>
-              <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-stone-500">Account size</span>
+              <span className="mb-1 block font-mono text-[11px] font-semibold uppercase tracking-widest text-faint">Account size</span>
               <input
                 type="number"
                 min="0"
                 value={accountSize}
                 onChange={(event) => setAccountSize(Number(event.target.value))}
-                className="num min-h-10 w-full rounded-md border border-line bg-white px-3 text-sm text-ink sm:w-36"
+                className="num min-h-10 w-full px-3 text-sm sm:w-36"
               />
             </label>
             <label>
-              <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-stone-500">Risk per trade %</span>
+              <span className="mb-1 block font-mono text-[11px] font-semibold uppercase tracking-widest text-faint">Risk per trade %</span>
               <input
                 type="number"
                 min="0.1"
@@ -91,7 +89,7 @@ function StockSignalsPage() {
                 step="0.1"
                 value={riskPercent}
                 onChange={(event) => setRiskPercent(Number(event.target.value))}
-                className="num min-h-10 w-full rounded-md border border-line bg-white px-3 text-sm text-ink sm:w-36"
+                className="num min-h-10 w-full px-3 text-sm sm:w-36"
               />
             </label>
           </div>
@@ -192,12 +190,14 @@ function SignalWindow({ slot, symbol, onSymbolChange, accountSize, riskPercent, 
   const position = calculatePositionSize(accountSize, riskPercent, plan);
 
   return (
-    <section className="panel signal-window rounded-lg p-3 sm:p-4" aria-label={`Signal window ${slot}`}>
+    <section className="panel flex min-w-0 flex-col p-3 sm:p-4" aria-label={`Signal window ${slot}`}>
       <header className="mb-3 flex items-center gap-2">
-        <span className="slot-chip num" aria-hidden="true">W{slot}</span>
+        <span className="inline-flex h-[22px] min-w-[32px] items-center justify-center rounded border border-amber/40 bg-amber/10 font-mono text-[11px] font-bold tracking-wider text-amber" aria-hidden="true">
+          W{slot}
+        </span>
         {result ? (
           <>
-            <h3 className="mobile-safe-text min-w-0 flex-1 truncate text-sm font-bold text-ink">
+            <h3 className="mobile-safe-text min-w-0 flex-1 truncate font-mono text-sm font-bold text-ink">
               {result.symbol}
             </h3>
             <button
@@ -206,7 +206,7 @@ function SignalWindow({ slot, symbol, onSymbolChange, accountSize, riskPercent, 
               disabled={loading}
               title={`Refresh ${result.symbol} signal`}
               aria-label={`Refresh ${result.symbol} signal`}
-              className="icon-button h-9 w-9 text-stone-600 disabled:cursor-not-allowed disabled:opacity-60"
+              className="btn-ghost h-9 w-9"
             >
               <RefreshCcw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
             </button>
@@ -216,25 +216,25 @@ function SignalWindow({ slot, symbol, onSymbolChange, accountSize, riskPercent, 
               disabled={loading}
               title="Remove stock from this window"
               aria-label="Remove stock from this window"
-              className="icon-button h-9 w-9 text-stone-600 disabled:cursor-not-allowed disabled:opacity-60"
+              className="btn-ghost h-9 w-9"
             >
               <X className="h-4 w-4" aria-hidden="true" />
             </button>
           </>
         ) : (
-          <h3 className="text-sm font-bold text-stone-500">Add a stock to track</h3>
+          <h3 className="text-sm font-semibold text-faint">Add a stock to track</h3>
         )}
       </header>
 
       {error && (
-        <div className="mb-3 flex items-start gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-          <span className="mobile-safe-text flex-1">{error}</span>
+        <div className="mb-3 flex items-start gap-2 rounded-md border border-down/35 bg-down/10 px-3 py-2 text-xs">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-down" aria-hidden="true" />
+          <span className="mobile-safe-text flex-1 text-dim">{error}</span>
           {query.trim() && (
             <button
               type="button"
               onClick={() => load(query)}
-              className="font-bold underline underline-offset-2"
+              className="font-bold text-down underline underline-offset-2"
             >
               Retry
             </button>
@@ -246,25 +246,26 @@ function SignalWindow({ slot, symbol, onSymbolChange, accountSize, riskPercent, 
         <div className="flex flex-1 flex-col gap-3">
           <div
             key={popKey}
-            className={`decision-pop rounded-md border px-3 py-3 ${DECISION_STYLES[action] || DECISION_STYLES.WAIT}`}
+            className={`verdict px-3 py-3 ${VERDICT_STYLES[action] || VERDICT_STYLES.WAIT}`}
           >
             <div className="flex items-end justify-between gap-3">
               <div className="min-w-0">
-                <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide">
-                  <Zap className="h-3.5 w-3.5" aria-hidden="true" />
+                <div className="font-mono text-[10px] font-bold uppercase tracking-widest text-faint">
                   Intraday call
                 </div>
-                <div className="mt-1 text-4xl font-bold leading-none">{action}</div>
+                <div className="mt-1.5 text-4xl">
+                  <FlipVerdict text={action} />
+                </div>
               </div>
-              <div className="num shrink-0 text-right text-sm font-bold">
+              <div className="num shrink-0 text-right text-sm font-bold text-ink">
                 {intraday.confidence || 0}%
-                <span className="block text-[10px] font-semibold uppercase tracking-wide opacity-80">strength</span>
+                <span className="block font-mono text-[10px] font-semibold uppercase tracking-widest text-faint">strength</span>
               </div>
             </div>
             <div className="confidence-track mt-3" role="presentation">
               <div className="confidence-fill" style={{ width: `${Math.min(intraday.confidence || 0, 100)}%` }} />
             </div>
-            <p className="mobile-safe-text mt-2 text-xs font-semibold leading-5">
+            <p className="mobile-safe-text mt-2 text-xs leading-5 text-dim">
               {intraday.explanation}
             </p>
           </div>
@@ -283,7 +284,7 @@ function SignalWindow({ slot, symbol, onSymbolChange, accountSize, riskPercent, 
             <MiniMetric label="15m check" value={formatValidation(intraday.validation)} />
           </div>
 
-          <footer className="mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-line pt-2 text-[11px] font-semibold text-stone-500">
+          <footer className="mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-line pt-2 font-mono text-[11px] text-faint">
             <span className="inline-flex items-center gap-1">
               <Clock3 className="h-3.5 w-3.5" aria-hidden="true" />
               Candle {intraday.candleTime || '-'}
@@ -305,7 +306,7 @@ function SignalWindow({ slot, symbol, onSymbolChange, accountSize, riskPercent, 
                 }}
                 placeholder="Symbol, e.g. RELIANCE.NS"
                 aria-label={`Stock symbol for window ${slot}`}
-                className="min-h-10 w-full rounded-md border border-line bg-white px-3 text-sm text-ink"
+                className="num min-h-10 w-full px-3 text-sm"
               />
               <button
                 type="button"
@@ -313,7 +314,7 @@ function SignalWindow({ slot, symbol, onSymbolChange, accountSize, riskPercent, 
                 disabled={loading || !query.trim()}
                 title="Get signal"
                 aria-label="Get signal"
-                className="glow-button grid h-10 w-10 shrink-0 place-items-center rounded-md text-white disabled:cursor-not-allowed disabled:opacity-60"
+                className="btn-amber h-10 w-10 shrink-0"
               >
                 {loading
                   ? <RefreshCcw className="h-4 w-4 animate-spin" aria-hidden="true" />
@@ -324,19 +325,19 @@ function SignalWindow({ slot, symbol, onSymbolChange, accountSize, riskPercent, 
             </div>
 
             {suggestions.length > 0 && (
-              <ul className="absolute inset-x-0 top-12 z-20 max-h-52 overflow-auto rounded-md border border-line bg-white shadow-panel">
+              <ul className="absolute inset-x-0 top-12 z-20 max-h-52 overflow-auto rounded-md border border-line bg-panel shadow-[0_16px_40px_rgba(0,0,0,0.55)]">
                 {suggestions.map((item) => (
                   <li key={`${item.symbol}-${item.exchange}`}>
                     <button
                       type="button"
                       onClick={() => load(item.symbol)}
-                      className="row-hover flex w-full items-center justify-between gap-2 border-b border-line px-3 py-2 text-left text-xs last:border-b-0 hover:bg-paper"
+                      className="row-hover flex w-full items-center justify-between gap-2 border-b border-line px-3 py-2 text-left text-xs last:border-b-0 hover:bg-well"
                     >
                       <span className="min-w-0">
-                        <span className="block font-bold text-ink">{item.symbol}</span>
-                        <span className="block truncate text-stone-500">{item.name}</span>
+                        <span className="block font-mono font-bold text-ink">{item.symbol}</span>
+                        <span className="block truncate text-faint">{item.name}</span>
                       </span>
-                      <span className="shrink-0 rounded-sm border border-line bg-paper px-1.5 py-0.5 text-[10px] font-semibold text-stone-500">
+                      <span className="shrink-0 rounded border border-line bg-well px-1.5 py-0.5 font-mono text-[10px] font-semibold text-faint">
                         {item.exchange || '-'}
                       </span>
                     </button>
@@ -347,7 +348,7 @@ function SignalWindow({ slot, symbol, onSymbolChange, accountSize, riskPercent, 
           </div>
 
           <div>
-            <span className="text-[11px] font-bold uppercase tracking-wide text-stone-500">Samples</span>
+            <span className="font-mono text-[11px] font-semibold uppercase tracking-widest text-faint">Try</span>
             <div className="mt-1.5 flex flex-wrap gap-1.5">
               {SAMPLE_STOCKS.map((item) => (
                 <button
@@ -355,7 +356,7 @@ function SignalWindow({ slot, symbol, onSymbolChange, accountSize, riskPercent, 
                   type="button"
                   onClick={() => load(item)}
                   disabled={loading}
-                  className="rounded-md border border-line bg-white px-2 py-1 text-[11px] font-bold text-stone-600 transition hover:border-cobalt hover:text-cobalt disabled:opacity-60"
+                  className="rounded border border-line bg-well px-2 py-1 font-mono text-[11px] font-semibold text-dim transition hover:border-amber hover:text-amber disabled:opacity-60"
                 >
                   {item}
                 </button>
@@ -365,21 +366,21 @@ function SignalWindow({ slot, symbol, onSymbolChange, accountSize, riskPercent, 
 
           {mostTraded.length > 0 && (
             <div className="min-h-0">
-              <span className="text-[11px] font-bold uppercase tracking-wide text-stone-500">Most traded last week</span>
-              <ul className="mt-1.5 max-h-40 overflow-auto rounded-md border border-line bg-white">
+              <span className="font-mono text-[11px] font-semibold uppercase tracking-widest text-faint">Most traded last week</span>
+              <ul className="mt-1.5 max-h-40 overflow-auto rounded-md border border-line bg-well">
                 {mostTraded.slice(0, 8).map((item) => (
                   <li key={`${item.symbol}-${item.exchange}`}>
                     <button
                       type="button"
                       onClick={() => load(item.symbol)}
                       disabled={loading}
-                      className="row-hover flex w-full items-center justify-between gap-2 border-b border-line px-3 py-1.5 text-left text-xs last:border-b-0 hover:bg-paper disabled:opacity-60"
+                      className="row-hover flex w-full items-center justify-between gap-2 border-b border-line px-3 py-1.5 text-left text-xs last:border-b-0 hover:bg-panel disabled:opacity-60"
                     >
                       <span className="min-w-0">
-                        <span className="block font-bold text-ink">{item.symbol}</span>
-                        <span className="block truncate text-stone-500">{item.name}</span>
+                        <span className="block font-mono font-bold text-ink">{item.symbol}</span>
+                        <span className="block truncate text-faint">{item.name}</span>
                       </span>
-                      <span className="num shrink-0 font-semibold text-stone-600">
+                      <span className="num shrink-0 font-semibold text-dim">
                         {formatPrice(item.currentPrice)}
                       </span>
                     </button>
@@ -396,8 +397,8 @@ function SignalWindow({ slot, symbol, onSymbolChange, accountSize, riskPercent, 
 
 function MiniMetric({ label, value }) {
   return (
-    <div className="rounded-md border border-line bg-white px-2.5 py-1.5 shadow-sm">
-      <div className="text-[10px] font-bold uppercase tracking-wide text-stone-500">{label}</div>
+    <div className="rounded-md border border-line bg-well px-2.5 py-1.5">
+      <div className="font-mono text-[10px] font-bold uppercase tracking-widest text-faint">{label}</div>
       <div className="num mobile-safe-text mt-0.5 text-sm font-bold text-ink">{value}</div>
     </div>
   );

@@ -1,17 +1,14 @@
-import { Activity, BarChart3, Gauge } from 'lucide-react';
 import { memo } from 'react';
 import SignalBadge from './SignalBadge.jsx';
 
 function SignalCard({ result }) {
   if (!result) {
     return (
-      <section className="panel rounded-lg p-3 sm:p-5">
-        <div className="flex items-center gap-2 text-stone-600">
-          <Activity className="h-5 w-5" aria-hidden="true" />
-          <span className="text-sm font-semibold">Waiting For Stock Check</span>
-        </div>
-        <p className="mt-3 text-sm leading-6 text-stone-600">
-          Enter a stock code and check it to see the latest signal, confidence, and past results.
+      <section className="panel p-4 sm:p-5">
+        <span className="tag">BT · Latest signal</span>
+        <p className="mt-3 text-sm leading-6 text-dim">
+          Pick a stock and run a backtest. The latest signal, its strength, and the full
+          day-by-day record will land here.
         </p>
       </section>
     );
@@ -21,14 +18,21 @@ function SignalCard({ result }) {
   const metrics = latest ? latestMetrics(latest) : [];
 
   return (
-    <section className="panel rounded-lg p-3 sm:p-5">
+    <section className="panel p-4 sm:p-5">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <p className="eyebrow-pill text-xs font-semibold uppercase text-cobalt">{result.symbol}</p>
-          {result.strategy?.strategyName && (
-            <p className="mt-2 text-xs font-semibold uppercase text-stone-500">{result.strategy.strategyName}</p>
-          )}
-          <h2 className="mobile-safe-text mt-1 text-xl font-bold text-ink sm:text-2xl">{result.latestSignal}</h2>
+          <span className="tag">BT · Latest signal</span>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <span className="num text-sm font-bold text-amber">{result.symbol}</span>
+            {result.strategy?.strategyName && (
+              <span className="rounded border border-line bg-well px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-faint">
+                {result.strategy.strategyName}
+              </span>
+            )}
+          </div>
+          <h2 className="mobile-safe-text mt-2 font-display text-2xl font-bold uppercase tracking-wide text-ink sm:text-3xl">
+            {result.latestSignal}
+          </h2>
           {latest && (
             <div className="mt-3">
               <SignalBadge type={latest.signalType} label={latest.label} />
@@ -36,21 +40,20 @@ function SignalCard({ result }) {
           )}
         </div>
 
-        <div className="rounded-lg border border-line bg-white/75 px-4 py-3 shadow-panel">
-          <div className="flex items-center gap-2 text-sm font-semibold text-stone-600">
-            <Gauge className="h-4 w-4" aria-hidden="true" />
+        <div className="shrink-0 rounded-md border border-line bg-well px-4 py-3 text-right">
+          <div className="font-mono text-[11px] font-semibold uppercase tracking-widest text-faint">
             Signal strength
           </div>
-          <div className="gradient-title mt-1 text-3xl font-bold">{result.confidence}</div>
+          <div className="num mt-1 text-3xl font-bold text-ink">{result.confidence}</div>
         </div>
       </div>
 
-      <p className="mobile-safe-text mt-4 text-sm leading-6 text-stone-700">{result.explanation}</p>
+      <p className="mobile-safe-text mt-4 text-sm leading-6 text-dim">{result.explanation}</p>
 
       {metrics.length > 0 && (
         <div className="mt-5 grid gap-3 sm:grid-cols-3">
           {metrics.map((metric) => (
-            <Metric key={metric.label} icon={metric.icon} label={metric.label} value={metric.value} />
+            <Metric key={metric.label} label={metric.label} value={metric.value} />
           ))}
         </div>
       )}
@@ -62,7 +65,7 @@ export default memo(SignalCard);
 
 function latestMetrics(signal) {
   const candidates = [
-    { label: 'Zone', value: signal.zone ? signal.zone.replace('-', ' ') : null, icon: <BarChart3 className="h-4 w-4" /> },
+    { label: 'Zone', value: signal.zone ? signal.zone.replace('-', ' ') : null },
     { label: 'RSI', value: formatOptionalNumber(signal.rsi) },
     { label: 'MACD', value: formatOptionalNumber(signal.macd) },
     { label: 'Stochastic %K', value: formatOptionalNumber(signal.stochasticK) },
@@ -78,14 +81,13 @@ function latestMetrics(signal) {
   return candidates.filter((metric) => metric.value !== null && metric.value !== undefined).slice(0, 3);
 }
 
-function Metric({ icon, label, value }) {
+function Metric({ label, value }) {
   return (
-    <div className="rounded-md border border-line bg-white/75 px-3 py-2 shadow-sm">
-      <div className="flex items-center gap-2 text-xs font-semibold uppercase text-stone-500">
-        {icon}
+    <div className="rounded-md border border-line bg-well px-3 py-2">
+      <div className="font-mono text-[10px] font-semibold uppercase tracking-widest text-faint">
         {label}
       </div>
-      <div className="mobile-safe-text mt-1 text-sm font-bold capitalize text-ink">{value}</div>
+      <div className="num mobile-safe-text mt-1 text-sm font-bold capitalize text-ink">{value}</div>
     </div>
   );
 }

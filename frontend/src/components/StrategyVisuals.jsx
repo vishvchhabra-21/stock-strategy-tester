@@ -4,46 +4,50 @@ const WIDTH = 920;
 const HEIGHT = 260;
 const PAD = { top: 18, right: 24, bottom: 34, left: 54 };
 
-function SeriesChartBase({ title, data = [], tone = '#0f8f63', suffix = '', emptyText = 'No chart data available' }) {
+const CHART_BG = '#0C111D';
+const GRID = '#1B2434';
+const AXIS_TEXT = '#5F6A85';
+
+function SeriesChartBase({ title, data = [], tone = '#2FD584', suffix = '', emptyText = 'No chart data available' }) {
   const chart = useMemo(() => buildLineChart(data), [data]);
 
   return (
-    <section className="panel rounded-lg p-3 sm:p-5">
+    <section className="panel p-4 sm:p-5">
       <div className="mb-3 flex items-center justify-between gap-3">
-        <h3 className="mobile-safe-text text-base font-semibold text-ink">{title}</h3>
-        <span className="text-xs font-semibold text-stone-500">{data.length} points</span>
+        <span className="tag">{title}</span>
+        <span className="font-mono text-xs text-faint">{data.length} points</span>
       </div>
 
       {chart.points ? (
-        <div className="overflow-hidden rounded-md border border-line bg-white">
+        <div className="overflow-hidden rounded-md border border-line">
           <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} className="h-auto w-full" role="img" aria-label={title}>
-            <rect width={WIDTH} height={HEIGHT} fill="#ffffff" />
+            <rect width={WIDTH} height={HEIGHT} fill={CHART_BG} />
             {chart.ticks.map((tick) => (
               <g key={tick.value}>
-                <line x1={PAD.left} x2={WIDTH - PAD.right} y1={tick.y} y2={tick.y} stroke="#e7ebe7" />
-                <text x="12" y={tick.y + 4} fill="#6b7280" fontSize="12">
+                <line x1={PAD.left} x2={WIDTH - PAD.right} y1={tick.y} y2={tick.y} stroke={GRID} />
+                <text x="12" y={tick.y + 4} fill={AXIS_TEXT} fontSize="12" fontFamily="IBM Plex Mono, monospace">
                   {formatCompact(tick.value)}{suffix}
                 </text>
               </g>
             ))}
-            <path d={chart.areaPath} fill={tone} opacity="0.08" />
+            <path d={chart.areaPath} fill={tone} opacity="0.1" />
             <polyline
               points={chart.points}
               fill="none"
               stroke={tone}
-              strokeWidth="3"
+              strokeWidth="2.5"
               strokeLinecap="round"
               strokeLinejoin="round"
             />
             {chart.labels.map((label) => (
-              <text key={label.text} x={label.x} y={HEIGHT - 12} textAnchor="middle" fill="#6b7280" fontSize="12">
+              <text key={label.text} x={label.x} y={HEIGHT - 12} textAnchor="middle" fill={AXIS_TEXT} fontSize="12" fontFamily="IBM Plex Mono, monospace">
                 {label.text}
               </text>
             ))}
           </svg>
         </div>
       ) : (
-        <div className="grid min-h-48 place-items-center rounded-md border border-dashed border-line bg-paper text-sm font-medium text-stone-500">
+        <div className="grid min-h-48 place-items-center rounded-md border border-dashed border-line bg-well font-mono text-sm text-faint">
           {emptyText}
         </div>
       )}
@@ -56,10 +60,10 @@ function ComparisonBarChartBase({ strategies = [] }) {
   const maxProfit = Math.max(...rows.map((item) => Math.abs(item.totalProfit || 0)), 1);
 
   return (
-    <section className="panel rounded-lg p-3 sm:p-5">
+    <section className="panel p-4 sm:p-5">
       <div className="mb-3 flex items-center justify-between gap-3">
-        <h3 className="text-base font-semibold text-ink">Method Comparison Chart</h3>
-        <span className="text-xs font-semibold text-stone-500">Profit vs drawdown</span>
+        <span className="tag">CMP · Profit by method</span>
+        <span className="font-mono text-xs text-faint">Profit vs drawdown</span>
       </div>
 
       {rows.length ? (
@@ -68,27 +72,27 @@ function ComparisonBarChartBase({ strategies = [] }) {
             const width = Math.min(100, Math.abs(strategy.totalProfit || 0) / maxProfit * 100);
             const isPositive = (strategy.totalProfit || 0) >= 0;
             return (
-              <div key={strategy.strategyName} className="rounded-md border border-line bg-white/75 p-3">
+              <div key={strategy.strategyName} className="rounded-md border border-line bg-well p-3">
                 <div className="mb-2 flex items-start justify-between gap-3 text-sm">
-                  <span className="mobile-safe-text min-w-0 font-semibold text-ink">
+                  <span className="mobile-safe-text min-w-0 font-mono font-semibold text-ink">
                     {strategy.strategyName}
                     {strategy.recommended && (
-                      <span className="ml-2 rounded-sm bg-mint/10 px-1.5 py-0.5 text-[11px] font-bold text-mint">
-                        Recommended
+                      <span className="ml-2 rounded border border-amber/40 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-amber">
+                        Best
                       </span>
                     )}
                   </span>
-                  <span className={isPositive ? 'font-bold text-mint' : 'font-bold text-coral'}>
+                  <span className={`num font-bold ${isPositive ? 'text-up' : 'text-down'}`}>
                     {formatSigned(strategy.totalProfit)}%
                   </span>
                 </div>
-                <div className="h-2 overflow-hidden rounded-full bg-paper">
+                <div className="h-1.5 overflow-hidden rounded-full bg-line/60">
                   <div
-                    className={isPositive ? 'h-full rounded-full bg-mint' : 'h-full rounded-full bg-coral'}
+                    className={`h-full rounded-full ${isPositive ? 'bg-up' : 'bg-down'}`}
                     style={{ width: `${Math.max(4, width)}%` }}
                   />
                 </div>
-                <div className="mt-2 grid grid-cols-3 gap-2 text-xs font-semibold text-stone-500">
+                <div className="num mt-2 grid grid-cols-3 gap-2 text-xs text-faint">
                   <span className="mobile-safe-text">Win {strategy.winRate}%</span>
                   <span className="mobile-safe-text">Drop {strategy.maxDrawdown}%</span>
                   <span className="mobile-safe-text">RR {strategy.riskRewardRatio}</span>
@@ -98,7 +102,7 @@ function ComparisonBarChartBase({ strategies = [] }) {
           })}
         </div>
       ) : (
-        <div className="grid min-h-48 place-items-center rounded-md border border-dashed border-line bg-paper text-sm font-medium text-stone-500">
+        <div className="grid min-h-48 place-items-center rounded-md border border-dashed border-line bg-well font-mono text-sm text-faint">
           Run a comparison to see the chart
         </div>
       )}

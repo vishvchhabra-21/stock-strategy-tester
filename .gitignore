@@ -9,3 +9,4 @@ yarn-error.log*
 *-dev.log
 backend/logs/
 *.local
+.claude/
