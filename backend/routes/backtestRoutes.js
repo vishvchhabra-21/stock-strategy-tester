@@ -2,7 +2,7 @@ const express = require('express');
 const { getHistoricalData, getIntradayData, getMostTradedLastWeek, searchSymbols } = require('../services/marketDataService');
 const { createCustomStrategy, readCustomStrategies } = require('../strategies/customStrategyStore');
 const { runAllStrategies, runStrategyByName, listStrategies } = require('../strategies/strategyEngine');
-const { analyzeStrategies, intradayPrediction } = require('../strategies/multiStrategyAnalysis');
+const { analyzeStrategies, dailyTrendBias, intradayPrediction } = require('../strategies/multiStrategyAnalysis');
 const { scanIntradayStocks } = require('../strategies/intradayScanner');
 const { analyzeMarket } = require('../analysis/market_analysis_engine');
 
@@ -58,8 +58,11 @@ router.post('/stocks/intraday-signal', async (req, res, next) => {
     }
 
     const normalizedSymbol = symbol.trim().toUpperCase();
-    const intradayData = await getIntradayData(normalizedSymbol).catch(() => []);
-    const intraday = intradayPrediction(intradayData);
+    const [intradayData, dailyData] = await Promise.all([
+      getIntradayData(normalizedSymbol).catch(() => []),
+      getHistoricalData(normalizedSymbol, '3mo').catch(() => [])
+    ]);
+    const intraday = intradayPrediction(intradayData, { dailyBias: dailyTrendBias(dailyData) });
 
     return res.json({
       symbol: normalizedSymbol,
@@ -187,7 +190,7 @@ router.post('/backtest/multi-strategy', async (req, res, next) => {
       : runAllStrategies(marketData, parameterMap);
     const analysis = analyzeStrategies(marketData, strategyResults, { period });
     const aiAnalysis = await analyzeMarket(normalizedSymbol, marketData);
-    const intraday = intradayPrediction(intradayData);
+    const intraday = intradayPrediction(intradayData, { dailyBias: dailyTrendBias(marketData) });
 
     return res.json({
       symbol: normalizedSymbol,

@@ -660,7 +660,8 @@ function intradayConfidence(decision, scores, strategies, volumeRatio) {
   return round(Math.min(92, Math.max(45, (leadingScore / total) * 64 + confirmationCount * 4 + volumeBonus + 18)), 0);
 }
 
-function validateIntradayPrediction(intradayData) {
+function validateIntradayPrediction(intradayData, options = {}) {
+  const dailyBias = options.dailyBias || 'NEUTRAL';
   const session = latestCompletedSessionBars(intradayData);
   if (session.length < 45) {
     return {
@@ -676,7 +677,7 @@ function validateIntradayPrediction(intradayData) {
     const currentBar = session[end - 1];
     const futureBar = session[end + 2];
     const prefix = intradayData.filter((bar) => bar.dateTime <= currentBar.dateTime);
-    const prediction = intradayPrediction(prefix, { includeValidation: false });
+    const prediction = intradayPrediction(prefix, { includeValidation: false, dailyBias });
 
     // Only score confident, committed calls. A trader acts on strong setups, so
     // judging the predictor on those is the honest measure of its accuracy.
@@ -703,8 +704,150 @@ function validateIntradayPrediction(intradayData) {
   };
 }
 
+// Discipline thresholds. The whole point is to act like a careful trader who
+// protects capital: only take A-grade, trend-aligned setups and otherwise WAIT.
+const ADX_TREND_MIN = 20;          // below this the market has no real trend (chop)
+const ATR_PERCENT_MIN = 0.08;      // below this the candle is too flat to trade
+const ATR_PERCENT_MAX = 3.0;       // above this it is news-driven whipsaw territory
+const OVEREXTENSION_ATR = 3.5;     // never chase more than this many ATRs from VWAP
+const MIN_SESSION_BARS = 15;       // need enough completed candles to judge structure
+
+function waitDecision(reasons) {
+  return { decision: 'WAIT', confidence: 30, reasons };
+}
+
+// The core "should I trade?" brain. Returns BUY/SELL only when an independent
+// set of confirmations (trend structure, location vs VWAP, momentum, directional
+// strength) line up AND the higher-timeframe daily trend is not against it AND
+// price is not over-extended. Anything less is a WAIT, with a plain-English
+// reason so the user learns why the trade was skipped.
+function disciplinedIntradayDecision(ctx) {
+  const reasons = [];
+
+  // 1) Hard protective gates --------------------------------------------------
+  if (ctx.barsInSession < MIN_SESSION_BARS) {
+    reasons.push('Not enough completed candles in this session yet, so no trade.');
+    return waitDecision(reasons);
+  }
+  if (![ctx.ema9, ctx.ema21, ctx.ema50, ctx.vwap, ctx.rsi, ctx.macd, ctx.macdSignal].every(Number.isFinite)) {
+    reasons.push('The trend structure is not fully formed yet, so there is no reliable read to trade.');
+    return waitDecision(reasons);
+  }
+  if (!Number.isFinite(ctx.atrPercent) || ctx.atrPercent < ATR_PERCENT_MIN) {
+    reasons.push('Volatility is too low right now; the market is flat with no tradeable edge.');
+    return waitDecision(reasons);
+  }
+  if (ctx.atrPercent > ATR_PERCENT_MAX) {
+    reasons.push('Volatility is abnormally high; staying out to avoid getting whipsawed.');
+    return waitDecision(reasons);
+  }
+
+  // 2) Regime gate: only trade a real trend or a clean, volume-backed breakout -
+  const adxStrong = Number.isFinite(ctx.adx) && ctx.adx >= ADX_TREND_MIN;
+  const breakoutUp = ctx.close > ctx.openingHigh && ctx.volumeRatio >= 1.15;
+  const breakoutDown = ctx.close < ctx.openingLow && ctx.volumeRatio >= 1.15;
+  if (!adxStrong && !breakoutUp && !breakoutDown) {
+    reasons.push(`Trend strength is weak (ADX ${Number.isFinite(ctx.adx) ? round(ctx.adx) : 'NA'}); no clean trend or breakout to trade.`);
+    return waitDecision(reasons);
+  }
+
+  // 3) Directional confluence across independent families ---------------------
+  const emaStackBull = ctx.ema9 > ctx.ema21 && ctx.ema21 >= ctx.ema50;
+  const emaStackBear = ctx.ema9 < ctx.ema21 && ctx.ema21 <= ctx.ema50;
+  const locBull = ctx.close > ctx.vwap;
+  const locBear = ctx.close < ctx.vwap;
+  // Momentum confirmation: MACD on the right side of its signal and RSI in the
+  // healthy-trend band (not yet exhausted). The over-extension gate below is
+  // what stops us chasing, so the RSI ceiling/floor here stays generous.
+  const momBull = ctx.macd > ctx.macdSignal && ctx.rsi >= 50 && ctx.rsi <= 78;
+  const momBear = ctx.macd < ctx.macdSignal && ctx.rsi <= 50 && ctx.rsi >= 22;
+  const volOk = ctx.volumeRatio >= 1.1;
+  const diBull = !Number.isFinite(ctx.plusDi) || !Number.isFinite(ctx.minusDi) || ctx.plusDi >= ctx.minusDi;
+  const diBear = !Number.isFinite(ctx.plusDi) || !Number.isFinite(ctx.minusDi) || ctx.minusDi >= ctx.plusDi;
+
+  // A trade needs trend structure (EMA stack), the right side of VWAP, agreeing
+  // directional movement, and EITHER a strong ADX trend OR a volume breakout.
+  // Momentum (MACD/RSI) is a confidence booster, not a hard gate, so a single
+  // last candle cannot veto an otherwise textbook trend.
+  const longSetup = emaStackBull && locBull && diBull && (adxStrong || (breakoutUp && volOk));
+  const shortSetup = emaStackBear && locBear && diBear && (adxStrong || (breakoutDown && volOk));
+
+  if (!longSetup && !shortSetup) {
+    reasons.push('Trend, momentum, and price location do not agree, so there is no high-quality setup.');
+    return waitDecision(reasons);
+  }
+
+  // 4) Higher-timeframe alignment: do not fight the daily trend ----------------
+  if (longSetup && ctx.dailyBias === 'BEARISH') {
+    reasons.push('Intraday looks bullish but the daily trend is down, so a long is too risky. Waiting.');
+    return waitDecision(reasons);
+  }
+  if (shortSetup && ctx.dailyBias === 'BULLISH') {
+    reasons.push('Intraday looks bearish but the daily trend is up, so a short is too risky. Waiting.');
+    return waitDecision(reasons);
+  }
+
+  // 5) Never chase an over-extended move. Distance is measured from the fast EMA
+  //    (not session VWAP, which lags far behind price in any real trend) so we
+  //    only stand aside when price has sprinted away from its own trend line.
+  if (longSetup && ctx.distanceFromFastAtr > OVEREXTENSION_ATR) {
+    reasons.push('Price has sprinted far above its fast average; waiting for a pullback instead of chasing the long.');
+    return waitDecision(reasons);
+  }
+  if (shortSetup && ctx.distanceFromFastAtr < -OVEREXTENSION_ATR) {
+    reasons.push('Price has dropped far below its fast average; waiting for a bounce instead of chasing the short.');
+    return waitDecision(reasons);
+  }
+
+  // 6) Approved trade: size up the confidence from how much lines up ----------
+  const decision = longSetup ? 'BUY' : 'SELL';
+  const momentumAligned = decision === 'BUY' ? momBull : momBear;
+  const breakoutAligned = decision === 'BUY' ? breakoutUp : breakoutDown;
+  const dailyAligned = ctx.dailyBias === (decision === 'BUY' ? 'BULLISH' : 'BEARISH');
+
+  let confidence = 56;
+  if (adxStrong) confidence += Math.min(15, (ctx.adx - ADX_TREND_MIN) * 0.6);
+  if (momentumAligned) confidence += 8;
+  if (volOk) confidence += 6;
+  if (breakoutAligned) confidence += 6;
+  if (dailyAligned) confidence += 8;
+  if (ctx.supertrendDir === decision) confidence += 4;
+  confidence = round(Math.min(92, confidence), 0);
+
+  reasons.push(decision === 'BUY'
+    ? `Aligned long: EMA9>EMA21>EMA50, price above VWAP, ADX ${Number.isFinite(ctx.adx) ? round(ctx.adx) : 'NA'}${dailyAligned ? ', and the daily trend is up' : ''}.`
+    : `Aligned short: EMA9<EMA21<EMA50, price below VWAP, ADX ${Number.isFinite(ctx.adx) ? round(ctx.adx) : 'NA'}${dailyAligned ? ', and the daily trend is down' : ''}.`);
+
+  return { decision, confidence, reasons };
+}
+
+// Daily (higher timeframe) trend bias used to keep intraday trades on the right
+// side of the bigger move. Works for both bullish and bearish regimes.
+function dailyTrendBias(dailyRows) {
+  if (!Array.isArray(dailyRows) || dailyRows.length < 55) {
+    return 'NEUTRAL';
+  }
+
+  const closes = dailyRows.map((row) => row.close).filter(Number.isFinite);
+  if (closes.length < 55) {
+    return 'NEUTRAL';
+  }
+
+  const ema20 = emaSeries(closes, 20).at(-1);
+  const ema50 = emaSeries(closes, 50).at(-1);
+  const price = closes.at(-1);
+  if (!Number.isFinite(ema20) || !Number.isFinite(ema50)) {
+    return 'NEUTRAL';
+  }
+
+  if (ema20 > ema50 && price > ema50) return 'BULLISH';
+  if (ema20 < ema50 && price < ema50) return 'BEARISH';
+  return 'NEUTRAL';
+}
+
 function intradayPrediction(intradayData, options = {}) {
   const includeValidation = options.includeValidation !== false;
+  const dailyBias = options.dailyBias || 'NEUTRAL';
   const session = latestCompletedSessionBars(intradayData);
 
   if (session.length < 25) {
@@ -870,26 +1013,56 @@ function intradayPrediction(intradayData, options = {}) {
       : intradayVote('ADX Trend Strength', 'WAIT', 36, 'ADX trend strength is not strong enough for confirmation.'));
 
   const scores = scoreIntradayVotes(strategies);
-  const decision = decideIntraday(scores, strategies);
-  const totalScore = Math.max(scores.buy + scores.sell + scores.wait, 1);
-  const rawConfidence = intradayConfidence(decision, scores, strategies, volumeRatio);
-  const validation = includeValidation ? validateIntradayPrediction(intradayData) : null;
-  const confidence = validation?.samples >= 5 ? rawConfidence : Math.min(rawConfidence, 72);
   const latestAtrValue = atr.filter(Number.isFinite).at(-1) || latest.close * 0.003;
-  const stopDistance = latestAtrValue * 1.1;
+  const atrPercent = (latestAtrValue / Math.max(latest.close, 1)) * 100;
+  const distanceFromFastAtr = latestAtrValue && Number.isFinite(currentEma9)
+    ? (latest.close - currentEma9) / latestAtrValue
+    : 0;
+
+  // Replace the old "always pick a side" vote with a disciplined trader brain
+  // that mostly waits and only commits to A-grade, trend-aligned setups.
+  const disciplined = disciplinedIntradayDecision({
+    close: latest.close,
+    vwap: currentVwap,
+    ema9: currentEma9,
+    ema21: currentEma21,
+    ema50: currentEma50,
+    rsi: currentRsi,
+    macd: currentMacd,
+    macdSignal: currentMacdSignal,
+    macdHist: currentMacdHistogram,
+    macdHistPrev: previousMacdHistogram,
+    adx: adx.adx,
+    plusDi: adx.plusDi,
+    minusDi: adx.minusDi,
+    supertrendDir: supertrend.direction,
+    atrPercent,
+    distanceFromFastAtr,
+    volumeRatio,
+    openingHigh,
+    openingLow,
+    dailyBias,
+    barsInSession: session.length
+  });
+
+  const decision = disciplined.decision;
+  const totalScore = Math.max(scores.buy + scores.sell + scores.wait, 1);
+  const validation = includeValidation ? validateIntradayPrediction(intradayData, { dailyBias }) : null;
+  const confidence = validation?.samples >= 5 ? disciplined.confidence : Math.min(disciplined.confidence, 72);
+  const stopDistance = latestAtrValue * 1.4;
   const directionalEdge = Math.abs(scores.buy - scores.sell) / totalScore;
   const rewardRatio = decision === 'WAIT'
     ? null
-    : confidence >= 78 && directionalEdge >= 0.35
-      ? 3
-      : confidence >= 65 && directionalEdge >= 0.25
-        ? 2.5
-        : 2;
+    : confidence >= 78
+      ? 2.5
+      : confidence >= 66
+        ? 2
+        : 1.8;
   const targetDistance = rewardRatio ? stopDistance * rewardRatio : null;
   const riskReward = rewardRatio ? `1:${rewardLabel(rewardRatio)}` : null;
   const riskNote = riskReward
-    ? `${riskReward} selected from intraday confidence and vote edge.`
-    : 'No trade plan generated because the intraday decision is Wait.';
+    ? `${riskReward} selected from a trend-aligned, confluence-confirmed setup.`
+    : 'No trade plan generated because discipline says wait for a better setup.';
   const riskPlan = decision === 'BUY'
     ? {
         entry: round(latest.close),
@@ -916,17 +1089,20 @@ function intradayPrediction(intradayData, options = {}) {
           rewardRatio: null,
           note: riskNote
         };
-  const reasons = strategies
-    .filter((strategy) => strategy.direction === decision || strategy.direction !== 'WAIT')
-    .slice(0, 6)
+  // Lead with the disciplined trade/no-trade reasoning, then add the supporting
+  // sub-strategy views that agree with the final decision.
+  const supportingReasons = strategies
+    .filter((strategy) => strategy.direction === decision && decision !== 'WAIT')
+    .slice(0, 4)
     .map((strategy) => `${strategy.name}: ${strategy.reason}`);
+  const reasons = [...disciplined.reasons, ...supportingReasons].slice(0, 6);
 
   return {
     decision,
     confidence,
     explanation: decision === 'WAIT'
-      ? 'Intraday strategy votes are mixed or weak, so the predictor says Wait.'
-      : `Intraday setup favors ${decision} after checking VWAP, EMA trend, opening range, momentum, pullback, reversal, gap, pivot, Supertrend, MACD, Donchian, Bollinger, stochastic, and ADX filters.`,
+      ? `No trade: ${disciplined.reasons[0] || 'conditions are not favorable for a high-quality setup.'}`
+      : `${decision} setup is trend-aligned and confirmed: ${disciplined.reasons[disciplined.reasons.length - 1]}`,
     reasons,
     strategies,
     votes: {
@@ -961,5 +1137,6 @@ function intradayPrediction(intradayData, options = {}) {
 
 module.exports = {
   analyzeStrategies,
+  dailyTrendBias,
   intradayPrediction
 };
