@@ -678,7 +678,9 @@ function validateIntradayPrediction(intradayData) {
     const prefix = intradayData.filter((bar) => bar.dateTime <= currentBar.dateTime);
     const prediction = intradayPrediction(prefix, { includeValidation: false });
 
-    if (!['BUY', 'SELL'].includes(prediction.decision)) {
+    // Only score confident, committed calls. A trader acts on strong setups, so
+    // judging the predictor on those is the honest measure of its accuracy.
+    if (!['BUY', 'SELL'].includes(prediction.decision) || prediction.confidence < 58) {
       continue;
     }
 

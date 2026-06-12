@@ -102,32 +102,73 @@ function calculateSharpeRatio(returns) {
   return deviation ? round(mean / deviation) : 0;
 }
 
+// Collapse the raw per-bar signals into discrete trades. A long run of the same
+// directional signal on consecutive bars is a single setup, not one trade per
+// day, so only the first bar of each fresh run opens a trade. A NEUTRAL/no-clear
+// bar closes the open position so the next directional bar can start a new one.
+// This removes the autocorrelation that otherwise counts one bad swing as many
+// separate losses and makes the win rate reflect distinct setups.
+function collapseSignalsIntoTrades(signals) {
+  const trades = [];
+  let openDirection = null;
+
+  signals.forEach((signal) => {
+    const isDirectional = signal.signalType === 'BULLISH_REVERSAL' || signal.signalType === 'BEARISH_REVERSAL';
+
+    if (!isDirectional) {
+      openDirection = null;
+      return;
+    }
+
+    if (signal.signalType === openDirection) {
+      return;
+    }
+
+    openDirection = signal.signalType;
+
+    const outcome = signal.tradeOutcome || null;
+    const fallbackReturn = signedReturnForSignal(signal, 'return5d');
+    const realizedReturn = Number.isFinite(outcome?.returnPercent)
+      ? outcome.returnPercent
+      : fallbackReturn;
+
+    if (!Number.isFinite(realizedReturn)) {
+      return;
+    }
+
+    trades.push({
+      date: signal.date,
+      label: signal.label,
+      signalType: signal.signalType,
+      win: outcome ? outcome.win === true : realizedReturn > 0,
+      realizedReturn,
+      futureReturns: signal.futureReturns
+    });
+  });
+
+  return trades;
+}
+
 function buildSummary(signals) {
   const directionalSignals = signals.filter((signal) => (
     signal.signalType === 'BULLISH_REVERSAL' ||
     signal.signalType === 'BEARISH_REVERSAL'
   ));
 
-  const completedTrades = directionalSignals
-    .map((signal) => ({
-      ...signal,
-      strategyReturn5d: signedReturnForSignal(signal, 'return5d')
-    }))
-    .filter((signal) => Number.isFinite(signal.strategyReturn5d));
+  const trades = collapseSignalsIntoTrades(signals);
+  const winningTrades = trades.filter((trade) => trade.win);
+  const tradeReturns = trades.map((trade) => trade.realizedReturn);
 
-  const winningTrades = completedTrades.filter((signal) => signal.strategyReturn5d > 0);
-  const fiveDayReturns = completedTrades.map((signal) => signal.strategyReturn5d);
-
-  const bestTrade = completedTrades.reduce((best, signal) => {
-    if (!best || signal.strategyReturn5d > best.strategyReturn5d) {
-      return signal;
+  const bestTrade = trades.reduce((best, trade) => {
+    if (!best || trade.realizedReturn > best.realizedReturn) {
+      return trade;
     }
     return best;
   }, null);
 
-  const worstTrade = completedTrades.reduce((worst, signal) => {
-    if (!worst || signal.strategyReturn5d < worst.strategyReturn5d) {
-      return signal;
+  const worstTrade = trades.reduce((worst, trade) => {
+    if (!worst || trade.realizedReturn < worst.realizedReturn) {
+      return trade;
     }
     return worst;
   }, null);
@@ -144,25 +185,25 @@ function buildSummary(signals) {
     neutralSignals: countByType.NEUTRAL || 0,
     trendChangeSignals: countByType.POSSIBLE_TREND_CHANGE || 0,
     noClearSignals: countByType.NO_CLEAR_SIGNAL || 0,
-    winRate: completedTrades.length ? round((winningTrades.length / completedTrades.length) * 100) : 0,
+    winRate: trades.length ? round((winningTrades.length / trades.length) * 100) : 0,
     averageReturn1d: round(average(directionalSignals.map((signal) => signedReturnForSignal(signal, 'return1d')))),
     averageReturn3d: round(average(directionalSignals.map((signal) => signedReturnForSignal(signal, 'return3d')))),
-    averageReturn5d: round(average(fiveDayReturns)),
-    profitPercentage: calculateProfitPercentage(fiveDayReturns),
-    maximumDrawdown: calculateMaxDrawdown(fiveDayReturns),
-    riskRewardRatio: calculateRiskRewardRatio(fiveDayReturns),
-    profitFactor: calculateProfitFactor(fiveDayReturns),
-    sharpeRatio: calculateSharpeRatio(fiveDayReturns),
-    tradeCount: completedTrades.length,
+    averageReturn5d: round(average(tradeReturns)),
+    profitPercentage: calculateProfitPercentage(tradeReturns),
+    maximumDrawdown: calculateMaxDrawdown(tradeReturns),
+    riskRewardRatio: calculateRiskRewardRatio(tradeReturns),
+    profitFactor: calculateProfitFactor(tradeReturns),
+    sharpeRatio: calculateSharpeRatio(tradeReturns),
+    tradeCount: trades.length,
     bestTrade: bestTrade ? {
       date: bestTrade.date,
       label: bestTrade.label,
-      return5d: round(bestTrade.strategyReturn5d)
+      return5d: round(bestTrade.realizedReturn)
     } : null,
     worstTrade: worstTrade ? {
       date: worstTrade.date,
       label: worstTrade.label,
-      return5d: round(worstTrade.strategyReturn5d)
+      return5d: round(worstTrade.realizedReturn)
     } : null
   };
 }

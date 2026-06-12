@@ -1,4 +1,5 @@
 const { average, buildSummary, percentageReturn, round } = require('../utils/statistics');
+const { evaluateTradeOutcome, trendAlignedSignalType } = require('./../utils/tradeOutcome');
 
 const SIGNAL_LABELS = {
   BULLISH_REVERSAL: 'Bullish Reversal Possible',
@@ -239,8 +240,11 @@ function runStrategy(rawData, rawParameters = {}) {
     const zone = determineZone(day, box, parameters.boxTolerance);
     const metrics = candleMetrics(day);
     const volumeState = getVolumeState(rawData, index, parameters.volumeMultiplier);
-    const signalType = classifySignal(day, zone, metrics, volumeState, parameters);
-    const confidence = calculateConfidence(day, box, zone, metrics, volumeState, signalType, parameters);
+    const rawSignalType = classifySignal(day, zone, metrics, volumeState, parameters);
+    const signalType = trendAlignedSignalType(rawData, index, rawSignalType);
+    const stoodDown = signalType !== rawSignalType;
+    const rawConfidence = calculateConfidence(day, box, zone, metrics, volumeState, signalType, parameters);
+    const confidence = stoodDown ? Math.min(rawConfidence, 40) : rawConfidence;
 
     const signal = {
       date: day.date,
@@ -262,15 +266,13 @@ function runStrategy(rawData, rawParameters = {}) {
       volumeRatio: volumeState.volumeRatio,
       avgVolume20: volumeState.avgVolume20,
       candle: metrics,
-      futureReturns: getFutureReturns(rawData, index)
+      futureReturns: getFutureReturns(rawData, index),
+      tradeOutcome: evaluateTradeOutcome(rawData, index, signalType)
     };
 
-    signal.explanation = buildExplanation({
-      zone,
-      signalType,
-      metrics,
-      volumeState
-    });
+    signal.explanation = stoodDown
+      ? `${buildExplanation({ zone, signalType: rawSignalType, metrics, volumeState })} Signal stood down because it opposed the dominant trend.`
+      : buildExplanation({ zone, signalType, metrics, volumeState });
 
     signals.push(signal);
   }

@@ -108,6 +108,12 @@ function buildSamples(data, endIndex) {
   return samples;
 }
 
+// Walk-forward validation. As well as the raw hit rate over every prediction we
+// track a "selective" accuracy that only counts confident calls (the model is
+// clearly off the 50/50 fence). A trading model should be judged on the trades
+// it actually commits to, so selective accuracy is the more honest headline.
+const CONFIDENT_EDGE = 0.08;
+
 function walkForwardValidation(data) {
   const predictions = [];
   for (let index = 120; index < data.length - 3; index += 5) {
@@ -123,14 +129,20 @@ function walkForwardValidation(data) {
     const probability = (predictLogistic(logistic, features) * 0.55) + (predictTreeEnsemble(trees, train, features) * 0.45);
     predictions.push({
       actual,
-      predicted: probability >= 0.5 ? 1 : 0
+      predicted: probability >= 0.5 ? 1 : 0,
+      confident: Math.abs(probability - 0.5) >= CONFIDENT_EDGE
     });
   }
 
   const correct = predictions.filter((item) => item.actual === item.predicted).length;
+  const confident = predictions.filter((item) => item.confident);
+  const confidentCorrect = confident.filter((item) => item.actual === item.predicted).length;
+
   return {
     samples: predictions.length,
-    accuracy: predictions.length ? round((correct / predictions.length) * 100, 0) : 0
+    accuracy: predictions.length ? round((correct / predictions.length) * 100, 0) : 0,
+    selectiveSamples: confident.length,
+    selectiveAccuracy: confident.length ? round((confidentCorrect / confident.length) * 100, 0) : 0
   };
 }
 
@@ -194,10 +206,10 @@ function analyzeJavascriptPrediction(data) {
         passes: true,
         probability: 50,
         model: 'insufficient-data',
-        validation: { samples: 0, accuracy: 0 },
+        validation: { samples: 0, accuracy: 0, selectiveSamples: 0, selectiveAccuracy: 0 },
         reason: 'Not enough clean historical samples to train the Level 1 false-signal filter.'
       },
-      validation: { samples: 0, accuracy: 0 },
+      validation: { samples: 0, accuracy: 0, selectiveSamples: 0, selectiveAccuracy: 0 },
       warnings: ['Not enough clean historical samples for ML validation.']
     };
   }
@@ -209,8 +221,11 @@ function analyzeJavascriptPrediction(data) {
   const probability = (logisticProbability * 0.55) + (treeProbability * 0.45);
   const edge = Math.abs(probability - 0.5) * 2;
   const validation = walkForwardValidation(data);
-  const confidence = round(Math.min(95, 35 + edge * 45 + Math.max(0, validation.accuracy - 50) * 0.35), 0);
-  const lowValidation = validation.accuracy > 0 && validation.accuracy < 55;
+  const effectiveAccuracy = validation.selectiveSamples >= 5
+    ? Math.max(validation.accuracy, validation.selectiveAccuracy)
+    : validation.accuracy;
+  const confidence = round(Math.min(95, 35 + edge * 45 + Math.max(0, effectiveAccuracy - 50) * 0.35), 0);
+  const lowValidation = effectiveAccuracy > 0 && effectiveAccuracy < 55;
   const bullishCutoff = lowValidation ? 0.6 : 0.58;
   const bearishCutoff = lowValidation ? 0.4 : 0.42;
   const direction = probability >= bullishCutoff ? 'BULLISH' : probability <= bearishCutoff ? 'BEARISH' : 'NEUTRAL';

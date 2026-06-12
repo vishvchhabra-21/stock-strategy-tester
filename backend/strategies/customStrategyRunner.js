@@ -1,4 +1,5 @@
 const { buildSummary, percentageReturn, round } = require('../utils/statistics');
+const { evaluateTradeOutcome, trendAlignedSignalType } = require('../utils/tradeOutcome');
 const {
   averageVolume,
   bollingerBands,
@@ -29,6 +30,13 @@ function futureReturns(data, index) {
 }
 
 function makeSignal(day, index, signalType, confidence, explanation, extras, data) {
+  const alignedType = trendAlignedSignalType(data, index, signalType);
+  const stoodDown = alignedType !== signalType;
+  const finalConfidence = stoodDown ? Math.min(round(confidence, 0), 40) : round(confidence, 0);
+  const finalExplanation = stoodDown
+    ? `${explanation} Signal stood down because it opposed the dominant trend.`
+    : explanation;
+
   return {
     date: day.date,
     open: day.open,
@@ -36,11 +44,12 @@ function makeSignal(day, index, signalType, confidence, explanation, extras, dat
     low: day.low,
     close: day.close,
     volume: day.volume,
-    signalType,
-    label: LABELS[signalType] || LABELS.NO_CLEAR_SIGNAL,
-    confidence: round(confidence, 0),
-    explanation,
+    signalType: alignedType,
+    label: LABELS[alignedType] || LABELS.NO_CLEAR_SIGNAL,
+    confidence: finalConfidence,
+    explanation: finalExplanation,
     futureReturns: futureReturns(data, index),
+    tradeOutcome: evaluateTradeOutcome(data, index, alignedType),
     ...extras
   };
 }

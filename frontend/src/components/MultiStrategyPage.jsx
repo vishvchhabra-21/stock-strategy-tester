@@ -481,7 +481,8 @@ function AiScorePanel({ aiAnalysis }) {
         <span>News mood {score.sentiment}</span>
       </div>
       <p className="mobile-safe-text mt-2 text-xs font-semibold">
-        Price model check: {ml.validation?.accuracy || 0}% accuracy over {ml.validation?.samples || 0} past samples.
+        Price model check: {ml.validation?.selectiveAccuracy || ml.validation?.accuracy || 0}% accuracy on{' '}
+        {ml.validation?.selectiveSamples || ml.validation?.samples || 0} confident past calls.
       </p>
       <div className="mt-3 grid gap-3 lg:grid-cols-2">
         <div className="rounded-md border border-line bg-white/65 px-3 py-2">
