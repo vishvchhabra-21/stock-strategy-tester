@@ -401,7 +401,7 @@ export default function App() {
         )}
 
         <footer className="mt-2 flex flex-col gap-2 border-t border-line pt-4 font-mono text-[11px] text-faint sm:flex-row sm:items-center sm:justify-between">
-          <span>DALAL DESK — for learning and trade planning · not financial advice</span>
+          <span>SOURTRADES — for learning and trade planning · not financial advice</span>
           <span>Data: Yahoo Finance · NSE · Groww</span>
         </footer>
       </div>
@@ -421,7 +421,7 @@ function BrandMark() {
       </svg>
       <div className="min-w-0 leading-none">
         <span className="font-display text-xl font-bold uppercase tracking-wider text-ink">
-          Dalal<span className="text-amber">Desk</span>
+          Sour<span className="text-amber">Trades</span>
         </span>
         <span className="hidden font-mono text-[10px] uppercase tracking-widest text-faint lg:block lg:pt-1">
           Test the trade before you take it
